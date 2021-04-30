@@ -2,15 +2,157 @@
 
 const img = new Image(); // used to load image from <input> and draw to canvas
 
+const imageInput = document.getElementById('image-input');  // used to listen to image input
+
+const canvas = document.querySelector('canvas');  // get the canvas
+const ctx = canvas.getContext("2d");  // get the canvas context
+
+const form = document.getElementById('generate-meme');  // used to listen to submit button
+const reset = document.getElementById('button-group').querySelector("[type='reset']");  // the clear button
+const read = document.getElementById('button-group').querySelector("[type='button']");  // the read text button
+const voiceSelect = document.getElementById('voice-selection');  // the voices dropdown
+
+var topText, bottomText;  // keep track of the inputted texts
+
+const vol = document.getElementById('volume-group');  // used to listen to the volume slider
+var volumeLevel = 100;  // used to keep track of the volume level at which the text should be read at
+
+
+// loads the img object with a new image
+imageInput.addEventListener('change', () =>{
+
+  let fullPath = document.getElementById('image-input').value;
+  // let fullPath = "images/sky.jpg";
+
+  // don't load in anything if no image was inputted
+  if(!fullPath) { return; }
+
+  // Loads selected image into img src attribute
+  img.src = fullPath;
+
+  // extracts image file name into the img alt attribute
+  img.alt = fullPath.substring(fullPath.lastIndexOf('/') + 1);
+
+});
+
 // Fires whenever the img object loads a new image (such as with img.src =)
 img.addEventListener('load', () => {
-  // TODO
+
+  // clear the canvas context
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // fill canvas context with black to add borders on non-square images
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // draw the uploaded image onto the canvas
+  let dimensions = getDimmensions(canvas.width, canvas.height, img.width, img.height);
+  ctx.drawImage(img, dimensions.startX, dimensions.startY, dimensions.width, dimensions.height);
 
   // Some helpful tips:
   // - Fill the whole Canvas with black first to add borders on non-square images, then draw on top
   // - Clear the form when a new image is selected
   // - If you draw the image to canvas here, it will update as soon as a new image is selected
 });
+
+// generates the meme with the inputted text and image
+form.addEventListener('submit', () => {
+
+  // prevent the page from reloading when hitting submit
+  event.preventDefault();
+
+  // get the inputted texts
+  topText = document.getElementById('text-top').value;
+  bottomText = document.getElementById('text-bottom').value;
+
+  // set up the text properties to fill the canvas with
+  ctx.font = '30px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'white';
+
+
+  // fill the canvas with the top text and bottom text, centered in the middle and height/11 away from the borders
+  ctx.fillText(topText, canvas.width/2, canvas.height/11);
+  ctx.fillText(bottomText, canvas.width/2, canvas.height - canvas.height/11);
+
+  // toggle the clear and read text elements on
+  reset.disabled = false;
+  read.disabled = false;
+});
+
+// clears the generated image and/or text present
+reset.addEventListener('click', () => {
+
+  event.preventDefault();
+
+  // clear the canvas context
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // toggle the clear and read text elements off
+  reset.disabled = true;
+  read.disabled = true;
+
+});
+
+//Handles the change in volume
+vol.addEventListener('input', () => {
+  
+  //Get the volume level
+  let sliderValue = document.getElementById('volume-group').querySelector("[type='range']").value;
+  
+  //Update volume value for at which the text should be read in
+  volumeLevel = sliderValue;
+
+  //If the volume level is between 67 and 100, then display the volume level 3
+  if (sliderValue >= 67){
+    document.getElementById("volume-group").querySelector("img").src = "icons/volume-level-3.svg";
+  }
+  //If the volume level is between 34 and 66, then display the volume level 2
+  else if(sliderValue >= 34){
+    document.getElementById('volume-group').querySelector('img').src = "icons/volume-level-2.svg";
+  }
+  //If the volume level is between 1 and 33, then display the volume level 1
+  else if(sliderValue >= 1 ){
+    document.getElementById('volume-group').querySelector('img').src = "icons/volume-level-1.svg";
+  }
+  //Otherwise the volume level is 0, so display the volume level 0
+  else {
+    document.getElementById('volume-group').querySelector('img').src = "icons/volume-level-0.svg";
+  }
+});
+
+
+// Read out the inputted texts (taken from SpeechSynthesis Documentation)
+read.addEventListener('click', () => {
+
+  // Create new utterance with the inputted texts
+  var utterTop = new SpeechSynthesisUtterance(topText);
+  var utterBottom = new SpeechSynthesisUtterance(bottomText);
+
+  // Get the selected voice from the voice select dropdown
+  var selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+  
+  // Seach through the available voice list to match the selected voice
+  for(var i = 1; i < voiceSelect.length ; i++) {
+    if(availableVoices[i-1].name === selectedOption) {
+      utterTop.voice = availableVoices[i-1];
+      utterBottom.voice = availableVoices[i-1];
+    }
+  }
+
+  // adjust volume to be spoken at
+  utterTop.volume = volumeLevel / 100.0;
+  utterBottom.volume = volumeLevel / 100.0;
+
+  // speak the texts, if any were inputted
+  if(!(topText === ""))
+    synth.speak(utterTop);
+  if(!(bottomText === ""))
+    synth.speak(utterBottom);
+
+});
+
 
 /**
  * Takes in the dimensions of the canvas and the new image, then calculates the new
@@ -51,3 +193,43 @@ function getDimmensions(canvasWidth, canvasHeight, imageWidth, imageHeight) {
 
   return { 'width': width, 'height': height, 'startX': startX, 'startY': startY }
 }
+
+
+
+
+
+var synth = window.speechSynthesis;
+var availableVoices = [];
+voiceSelect.disabled = false;
+
+// Populates drop down with voices (taken from SpeechSynthesis Documentation)
+function populateVoiceList() {
+  availableVoices = synth.getVoices();
+
+  console.log(availableVoices.length);
+
+  for(var i = 0; i < availableVoices.length ; i++) {
+    let option = document.createElement('option');
+    option.textContent = availableVoices[i].name + ' (' + availableVoices[i].lang + ')';
+
+    if(availableVoices[i].default) {
+      option.textContent += ' -- DEFAULT';
+    }
+
+    option.setAttribute('data-lang', availableVoices[i].lang);
+    option.setAttribute('data-name', availableVoices[i].name);
+    voiceSelect.appendChild(option);
+  }
+  
+}
+
+populateVoiceList();
+if (speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = populateVoiceList;
+}
+
+// sets up the voices drop down
+voiceSelect.selectedIndex = "1";
+voiceSelect.querySelector("[value='none']").textContent = "Choose voice";
+voiceSelect.querySelector("[value='none']").disabled = true;
+
