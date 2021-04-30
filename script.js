@@ -21,17 +21,19 @@ var volumeLevel = 100;  // used to keep track of the volume level at which the t
 // loads the img object with a new image
 imageInput.addEventListener('change', () =>{
 
-  let fullPath = document.getElementById('image-input').value;
-  // let fullPath = "images/sky.jpg";
+  // get the uploaded file
+  let uploadFile = document.getElementById('image-input').files[0];
 
-  // don't load in anything if no image was inputted
-  if(!fullPath) { return; }
+  // don't load in anything if no file was inputted
+  if(!uploadFile) { return; }  
 
-  // Loads selected image into img src attribute
-  img.src = fullPath;
+  // Loads selected image into img src attribute by creating a DOMString
+  img.src = URL.createObjectURL(uploadFile);
 
   // extracts image file name into the img alt attribute
-  img.alt = fullPath.substring(fullPath.lastIndexOf('/') + 1);
+  img.alt = uploadFile.name;
+
+  console.log(img.alt);
 
 });
 
